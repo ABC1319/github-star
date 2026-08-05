@@ -36,16 +36,13 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         mkdir -p ./dist
-        python export.py --output ./dist --formats json,csv,xlsx,html
-        # 把固定名称文件复制到根目录，方便 Pages 直接访问
+        python export.py --output ./dist --formats json,csv,xlsx,html --no-readme
         cp ./dist/stars.json ./stars.json
         cp ./dist/stars.csv ./stars.csv
         cp ./dist/stars.xlsx ./stars.xlsx
         cp ./dist/index.html ./index.html
         echo "--- 生成的文件 ---"
         ls -la ./dist/
-        echo "--- 根目录文件 ---"
-        ls -la ./*.json ./*.csv ./*.xlsx ./*.html 2>/dev/null || true
 
     - name: Commit and push
       run: |
