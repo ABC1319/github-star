@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-GitHub Stars Exporter v2.3
+GitHub Stars Exporter v2.4
 导出 GitHub Stars 为 JSON / CSV / XLSX / HTML
 """
 
@@ -201,7 +201,7 @@ def export_html(data, filepath):
 
     header_cells = "".join(f"<th>{html_module.escape(h)}</th>" for h in display_headers)
 
-    # 使用 format() 而不是 f-string，避免与 CSS/JS 中的花括号冲突
+    # 使用 str.replace() 而非 str.format()，避免与 CSS/JS 花括号冲突
     html_template = """<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -228,7 +228,7 @@ def export_html(data, filepath):
 </head>
 <body>
 <h1>⭐ GitHub Stars</h1>
-<div class="info">共 {count} 个仓库，导出时间：{export_time}</div>
+<div class="info">共 __COUNT__ 个仓库，导出时间：__TIME__</div>
 <div class="download-links">
   <a href="stars.json" download>📥 下载 JSON</a>
   <a href="stars.csv" download>📥 下载 CSV</a>
@@ -239,8 +239,8 @@ def export_html(data, filepath):
   <select id="langFilter" onchange="filterTable()"><option value="">全部语言</option></select>
 </div>
 <table id="starTable">
-<thead><tr>{header_cells}</tr></thead>
-<tbody>{rows_html}</tbody>
+<thead><tr>__HEADER_CELLS__</tr></thead>
+<tbody>__ROWS_HTML__</tbody>
 </table>
 <script>
 const rows = Array.from(document.querySelectorAll('#starTable tbody tr'));
@@ -260,12 +260,11 @@ function filterTable() {
 </body>
 </html>"""
 
-    html_content = html_template.format(
-        count=len(data),
-        export_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        header_cells=header_cells,
-        rows_html=rows_html
-    )
+    html_content = (html_template
+        .replace("__COUNT__", str(len(data)))
+        .replace("__TIME__", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        .replace("__HEADER_CELLS__", header_cells)
+        .replace("__ROWS_HTML__", rows_html))
 
     with open(filepath, "w", encoding="utf-8") as f:
         f.write(html_content)
