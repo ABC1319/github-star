@@ -1,4 +1,5 @@
 # GitHub Stars Exporter 🌟
+![Export Status](https://github.com/ABC1319/github-star/actions/workflows/export.yml/badge.svg)
 
 将 GitHub Stars 导出为 JSON / CSV / XLSX / HTML 单页导航，支持自动部署到 GitHub Pages。
 
