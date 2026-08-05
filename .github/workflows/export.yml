@@ -1,29 +1,25 @@
 name: Export GitHub Stars
 
 on:
+  # 每月1号 00:00 UTC 自动运行
   schedule:
     - cron: '0 0 1 * *'
+
+  # 允许手动触发
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: "pages"
-  cancel-in-progress: false
+  contents: write
 
 jobs:
   export:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v5
+      with:
+        fetch-depth: 0
 
     - name: Set up Python
       uses: actions/setup-python@v5
@@ -41,17 +37,22 @@ jobs:
       run: |
         mkdir -p ./dist
         python export.py --output ./dist --formats json,csv,xlsx,html
+        # 把固定名称文件复制到根目录，方便 Pages 直接访问
+        cp ./dist/stars.json ./stars.json
+        cp ./dist/stars.csv ./stars.csv
+        cp ./dist/stars.xlsx ./stars.xlsx
+        cp ./dist/index.html ./index.html
+        echo "--- 生成的文件 ---"
+        ls -la ./dist/
+        echo "--- 根目录文件 ---"
+        ls -la ./*.json ./*.csv ./*.xlsx ./*.html 2>/dev/null || true
 
-    - name: Setup Pages
-      uses: actions/configure-pages@v5
-      with:
-        enablement: true
-
-    - name: Upload artifact
-      uses: actions/upload-pages-artifact@v3
-      with:
-        path: './dist'
-
-    - name: Deploy to GitHub Pages
-      id: deployment
-      uses: actions/deploy-pages@v4
+    - name: Commit and push
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git add dist/ stars.json stars.csv stars.xlsx index.html
+        git diff --staged --quiet && echo "无变更，跳过提交" && exit 0
+        git commit -m "chore: update GitHub Stars export"
+        git pull --rebase origin main
+        git push origin main
