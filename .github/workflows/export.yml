@@ -22,10 +22,15 @@ concurrency:
 jobs:
   export:
     runs-on: ubuntu-latest
+    
+    # 添加环境配置，这是 GitHub Pages 部署的标准要求
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5  # 升级到 Node 24 版本
 
     - name: Set up Python
       uses: actions/setup-python@v5
@@ -38,8 +43,6 @@ jobs:
 
     - name: Export GitHub Stars
       env:
-        # 从 secrets.GH_USERNAME 读取，但环境变量名仍保持 GITHUB_USERNAME
-        # 这样 export.py 无需修改
         GITHUB_USERNAME: ${{ secrets.GH_USERNAME }}
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
@@ -47,6 +50,8 @@ jobs:
 
     - name: Setup Pages
       uses: actions/configure-pages@v5
+      with:
+        enablement: true  # 自动启用 Pages（如果尚未启用）
 
     - name: Upload artifact
       uses: actions/upload-pages-artifact@v3
