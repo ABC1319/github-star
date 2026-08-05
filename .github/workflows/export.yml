@@ -38,7 +38,9 @@ jobs:
 
     - name: Export GitHub Stars
       env:
-        GITHUB_USERNAME: ${{ secrets.GITHUB_USERNAME }}
+        # 从 secrets.GH_USERNAME 读取，但环境变量名仍保持 GITHUB_USERNAME
+        # 这样 export.py 无需修改
+        GITHUB_USERNAME: ${{ secrets.GH_USERNAME }}
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         python export.py --output ./dist --formats json,csv,xlsx,html
