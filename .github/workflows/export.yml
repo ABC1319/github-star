@@ -3,7 +3,7 @@ name: Export GitHub Stars
 on:
   # 每周一 00:00 UTC 自动运行
   schedule:
-    - cron: '0 0 * * 1'
+    - cron: '0 0 1 * *'
 
   # 允许手动触发
   workflow_dispatch:
