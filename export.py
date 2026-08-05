@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-GitHub Stars Exporter v2.1
-导出 GitHub Stars 为 JSON / CSV / XLSX / HTML（含主题切换、搜索、排序、文件下载）
+GitHub Stars Exporter v2.2
+导出 GitHub Stars 为 JSON / CSV / XLSX / HTML
 支持 GitHub Actions 自动部署到 GitHub Pages
 """
 
@@ -14,6 +14,7 @@ import os
 import sys
 import time
 import argparse
+import html
 from datetime import datetime
 
 try:
@@ -104,12 +105,14 @@ def build_repo_data(repos, token, fetch_readme_flag=True):
     return results
 
 def export_json(data, filepath):
+    os.makedirs(os.path.dirname(filepath) or '.', exist_ok=True)
     with open(filepath, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
     print(f"  JSON: {filepath}")
 
 def export_csv(data, filepath):
     if not data: return
+    os.makedirs(os.path.dirname(filepath) or '.', exist_ok=True)
     fieldnames = list(data[0].keys())
     csv_fieldnames = [f for f in fieldnames if f not in ["README", "Owner头像"]]
     with open(filepath, "w", newline="", encoding="utf-8-sig") as f:
@@ -124,6 +127,7 @@ def export_xlsx(data, filepath):
         print("  未安装 openpyxl，跳过 XLSX")
         return
     if not data: return
+    os.makedirs(os.path.dirname(filepath) or '.', exist_ok=True)
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "GitHub Stars"
@@ -147,3 +151,140 @@ def export_xlsx(data, filepath):
     ws.auto_filter.ref = ws.dimensions
     wb.save(filepath)
     print(f"  XLSX: {filepath}")
+
+def export_html(data, filepath):
+    if not data: return
+    os.makedirs(os.path.dirname(filepath) or '.', exist_ok=True)
+    
+    rows_html = ""
+    headers = list(data[0].keys())
+    display_headers = [h for h in headers if h not in ["README", "Owner头像"]]
+    
+    for row in data:
+        cells = ""
+        for h in display_headers:
+            val = row.get(h, "")
+            if h == "项目链接" and val:
+                cells += f'<td><a href="{html.escape(str(val))}" target="_blank">{html.escape(str(val))}</a></td>'
+            elif h == "主页网址" and val:
+                cells += f'<td><a href="{html.escape(str(val))}" target="_blank">{html.escape(str(val))}</a></td>'
+            else:
+                cells += f"<td>{html.escape(str(val))}</td>"
+        rows_html += f"<tr>{cells}</tr>\n"
+    
+    header_cells = "".join(f"<th>{html.escape(h)}</th>" for h in display_headers)
+    
+    html_content = f"""<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GitHub Stars</title>
+<style>
+  :root {{ --bg: #f6f8fa; --fg: #24292f; --border: #d0d7de; --header-bg: #24292f; --header-fg: #fff; }}
+  @media (prefers-color-scheme: dark) {{ :root {{ --bg: #0d1117; --fg: #c9d1d9; --border: #30363d; --header-bg: #161b22; --header-fg: #c9d1d9; }} }}
+  body {{ font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif; background: var(--bg); color: var(--fg); margin: 0; padding: 20px; }}
+  h1 {{ margin-bottom: 10px; }}
+  .info {{ color: #57606a; margin-bottom: 20px; font-size: 14px; }}
+  .controls {{ margin-bottom: 15px; display: flex; gap: 10px; flex-wrap: wrap; }}
+  input, select {{ padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--fg); }}
+  table {{ width: 100%; border-collapse: collapse; font-size: 13px; }}
+  th, td {{ border: 1px solid var(--border); padding: 8px; text-align: left; vertical-align: top; }}
+  th {{ background: var(--header-bg); color: var(--header-fg); position: sticky; top: 0; }}
+  tr:hover {{ background: rgba(128,128,128,0.05); }}
+  a {{ color: #0969da; text-decoration: none; }}
+  @media (prefers-color-scheme: dark) {{ a {{ color: #58a6ff; }} }}
+</style>
+</head>
+<body>
+<h1>⭐ GitHub Stars</h1>
+<div class="info">共 {len(data)} 个仓库，导出时间：{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}</div>
+<div class="controls">
+  <input type="text" id="search" placeholder="搜索项目名/描述/语言..." oninput="filterTable()">
+  <select id="langFilter" onchange="filterTable()"><option value="">全部语言</option></select>
+</div>
+<table id="starTable">
+<thead><tr>{header_cells}</tr></thead>
+<tbody>{rows_html}</tbody>
+</table>
+<script>
+const rows = Array.from(document.querySelectorAll('#starTable tbody tr'));
+const langs = [...new Set(rows.map(r => r.cells[6]?.textContent).filter(Boolean))].sort();
+const sel = document.getElementById('langFilter');
+langs.forEach(l => {{ const o=document.createElement('option'); o.value=l; o.textContent=l; sel.appendChild(o); }});
+function filterTable() {{
+  const q = document.getElementById('search').value.toLowerCase();
+  const lang = document.getElementById('langFilter').value;
+  rows.forEach(r => {{
+    const text = r.textContent.toLowerCase();
+    const rowLang = r.cells[6]?.textContent || '';
+    r.style.display = (text.includes(q) && (!lang || rowLang === lang)) ? '' : 'none';
+  }});
+}}
+</script>
+</body>
+</html>"""
+    
+    with open(filepath, "w", encoding="utf-8") as f:
+        f.write(html_content)
+    print(f"  HTML: {filepath}")
+
+def main():
+    parser = argparse.ArgumentParser(description="导出 GitHub Stars")
+    parser.add_argument("--output", "-o", default="./dist", help="输出目录 (默认: ./dist)")
+    parser.add_argument("--username", "-u", default=os.environ.get("GITHUB_USERNAME"), help="GitHub 用户名")
+    parser.add_argument("--token", "-t", default=os.environ.get("GITHUB_TOKEN"), help="GitHub Token")
+    parser.add_argument("--formats", "-f", default="json,csv,xlsx,html", help="导出格式，逗号分隔")
+    parser.add_argument("--no-readme", action="store_true", help="不获取 README 内容")
+    args = parser.parse_args()
+
+    username = args.username
+    token = args.token
+    output_dir = args.output
+    formats = [f.strip().lower() for f in args.formats.split(",")]
+    fetch_readme_flag = not args.no_readme
+
+    if not username:
+        print("错误：未指定 GitHub 用户名。请通过 --username 参数或 GITHUB_USERNAME 环境变量设置。")
+        sys.exit(1)
+
+    print(f"输出目录: {output_dir}")
+    print(f"导出格式: {formats}")
+    print(f"获取 README: {fetch_readme_flag}\n")
+
+    # 获取数据
+    repos = fetch_all_starred(username, token)
+    if not repos:
+        print("未获取到任何星标仓库，退出。")
+        sys.exit(1)
+
+    data = build_repo_data(repos, token, fetch_readme_flag)
+
+    # 导出
+    print("[3/4] 正在导出文件...")
+    os.makedirs(output_dir, exist_ok=True)
+    
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    base_name = f"github_stars_{username}_{timestamp}"
+    
+    for fmt in formats:
+        if fmt == "json":
+            export_json(data, os.path.join(output_dir, f"{base_name}.json"))
+        elif fmt == "csv":
+            export_csv(data, os.path.join(output_dir, f"{base_name}.csv"))
+        elif fmt == "xlsx":
+            export_xlsx(data, os.path.join(output_dir, f"{base_name}.xlsx"))
+        elif fmt == "html":
+            export_html(data, os.path.join(output_dir, "index.html"))
+        else:
+            print(f"  未知格式: {fmt}")
+    
+    # 同时生成一个固定名称的 index.html 供 Pages 使用
+    if "html" in formats:
+        export_html(data, os.path.join(output_dir, "index.html"))
+        print(f"\n  Pages 入口: {os.path.join(output_dir, 'index.html')}")
+
+    print("\n[4/4] 全部完成！")
+
+if __name__ == "__main__":
+    main()
