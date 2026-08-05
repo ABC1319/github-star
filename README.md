@@ -77,8 +77,8 @@ python export.py --user yourname --formats json,csv,xlsx,html
    - 进入仓库 **Settings → Secrets and variables → Actions**
    - 点击 **New repository secret**
    - 添加以下 Secrets：
-     - `GITHUB_USERNAME`：你的 GitHub 用户名
-     - `GITHUB_TOKEN`：你的 GitHub Personal Access Token
+     - `GH_USERNAME`：你的 GitHub 用户名
+     - `GH_TOKEN`：你的 GitHub Personal Access Token
 
 3. **启用 GitHub Pages**
    - 进入仓库 **Settings → Pages**
