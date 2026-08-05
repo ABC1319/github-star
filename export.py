@@ -190,43 +190,45 @@ def export_html(data, filepath):
         for h in display_headers:
             val = row.get(h, "")
             if h == "项目链接" and val:
-                cells += f''<td><a href="{html_module.escape(str(val))}" target="_blank">{html_module.escape(str(val))}</a></td>''
+                esc = html_module.escape(str(val))
+                cells += f'<td><a href="{esc}" target="_blank">{esc}</a></td>'
             elif h == "主页网址" and val:
-                cells += f''<td><a href="{html_module.escape(str(val))}" target="_blank">{html_module.escape(str(val))}</a></td>''
+                esc = html_module.escape(str(val))
+                cells += f'<td><a href="{esc}" target="_blank">{esc}</a></td>'
             else:
                 cells += f"<td>{html_module.escape(str(val))}</td>"
         rows_html += f"<tr>{cells}</tr>\n"
 
     header_cells = "".join(f"<th>{html_module.escape(h)}</th>" for h in display_headers)
 
-    # 语言筛选：项目语言在第7列（索引6）
-    html_content = f'''<!DOCTYPE html>
+    # 使用 format() 而不是 f-string，避免与 CSS/JS 中的花括号冲突
+    html_template = """<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>GitHub Stars</title>
 <style>
-  :root {{ --bg: #f6f8fa; --fg: #24292f; --border: #d0d7de; --header-bg: #24292f; --header-fg: #fff; --link: #0969da; }}
-  @media (prefers-color-scheme: dark) {{ :root {{ --bg: #0d1117; --fg: #c9d1d9; --border: #30363d; --header-bg: #161b22; --header-fg: #c9d1d9; --link: #58a6ff; }} }}
-  body {{ font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif; background: var(--bg); color: var(--fg); margin: 0; padding: 20px; }}
-  h1 {{ margin-bottom: 10px; }}
-  .info {{ color: #57606a; margin-bottom: 20px; font-size: 14px; }}
-  .controls {{ margin-bottom: 15px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }}
-  input, select {{ padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--fg); font-size: 14px; }}
-  .download-links {{ margin-bottom: 15px; }}
-  .download-links a {{ display: inline-block; margin-right: 12px; color: var(--link); text-decoration: none; font-size: 14px; }}
-  .download-links a:hover {{ text-decoration: underline; }}
-  table {{ width: 100%; border-collapse: collapse; font-size: 13px; }}
-  th, td {{ border: 1px solid var(--border); padding: 8px; text-align: left; vertical-align: top; }}
-  th {{ background: var(--header-bg); color: var(--header-fg); position: sticky; top: 0; }}
-  tr:hover {{ background: rgba(128,128,128,0.05); }}
-  a {{ color: var(--link); text-decoration: none; }}
+  :root { --bg: #f6f8fa; --fg: #24292f; --border: #d0d7de; --header-bg: #24292f; --header-fg: #fff; --link: #0969da; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #0d1117; --fg: #c9d1d9; --border: #30363d; --header-bg: #161b22; --header-fg: #c9d1d9; --link: #58a6ff; } }
+  body { font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif; background: var(--bg); color: var(--fg); margin: 0; padding: 20px; }
+  h1 { margin-bottom: 10px; }
+  .info { color: #57606a; margin-bottom: 20px; font-size: 14px; }
+  .controls { margin-bottom: 15px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  input, select { padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--fg); font-size: 14px; }
+  .download-links { margin-bottom: 15px; }
+  .download-links a { display: inline-block; margin-right: 12px; color: var(--link); text-decoration: none; font-size: 14px; }
+  .download-links a:hover { text-decoration: underline; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { border: 1px solid var(--border); padding: 8px; text-align: left; vertical-align: top; }
+  th { background: var(--header-bg); color: var(--header-fg); position: sticky; top: 0; }
+  tr:hover { background: rgba(128,128,128,0.05); }
+  a { color: var(--link); text-decoration: none; }
 </style>
 </head>
 <body>
 <h1>⭐ GitHub Stars</h1>
-<div class="info">共 {len(data)} 个仓库，导出时间：{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}</div>
+<div class="info">共 {count} 个仓库，导出时间：{export_time}</div>
 <div class="download-links">
   <a href="stars.json" download>📥 下载 JSON</a>
   <a href="stars.csv" download>📥 下载 CSV</a>
@@ -244,19 +246,26 @@ def export_html(data, filepath):
 const rows = Array.from(document.querySelectorAll('#starTable tbody tr'));
 const langs = [...new Set(rows.map(r => r.cells[6]?.textContent).filter(Boolean))].sort();
 const sel = document.getElementById('langFilter');
-langs.forEach(l => {{ const o=document.createElement('option'); o.value=l; o.textContent=l; sel.appendChild(o); }});
-function filterTable() {{
+langs.forEach(l => { const o=document.createElement('option'); o.value=l; o.textContent=l; sel.appendChild(o); });
+function filterTable() {
   const q = document.getElementById('search').value.toLowerCase();
   const lang = document.getElementById('langFilter').value;
-  rows.forEach(r => {{
+  rows.forEach(r => {
     const text = r.textContent.toLowerCase();
     const rowLang = r.cells[6]?.textContent || '';
     r.style.display = (text.includes(q) && (!lang || rowLang === lang)) ? '' : 'none';
-  }});
-}}
+  });
+}
 </script>
 </body>
-</html>'''
+</html>"""
+
+    html_content = html_template.format(
+        count=len(data),
+        export_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        header_cells=header_cells,
+        rows_html=rows_html
+    )
 
     with open(filepath, "w", encoding="utf-8") as f:
         f.write(html_content)
