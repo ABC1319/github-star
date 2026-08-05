@@ -1,20 +1,15 @@
 name: Export GitHub Stars
 
 on:
-  # 每周一 00:00 UTC 自动运行
   schedule:
     - cron: '0 0 1 * *'
-
-  # 允许手动触发
   workflow_dispatch:
 
-# 设置 GITHUB_TOKEN 权限
 permissions:
   contents: read
   pages: write
   id-token: write
 
-# 允许同时只有一个部署任务
 concurrency:
   group: "pages"
   cancel-in-progress: false
@@ -22,15 +17,13 @@ concurrency:
 jobs:
   export:
     runs-on: ubuntu-latest
-    
-    # 添加环境配置，这是 GitHub Pages 部署的标准要求
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v5  # 升级到 Node 24 版本
+      uses: actions/checkout@v5
 
     - name: Set up Python
       uses: actions/setup-python@v5
@@ -46,12 +39,13 @@ jobs:
         GITHUB_USERNAME: ${{ secrets.GH_USERNAME }}
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
+        mkdir -p ./dist
         python export.py --output ./dist --formats json,csv,xlsx,html
 
     - name: Setup Pages
       uses: actions/configure-pages@v5
       with:
-        enablement: true  # 自动启用 Pages（如果尚未启用）
+        enablement: true
 
     - name: Upload artifact
       uses: actions/upload-pages-artifact@v3
